@@ -542,18 +542,22 @@
         // Device supports touch events.
         if ('ontouchstart' in document.documentElement) {
             keyboard_element.addEventListener('touchstart', function (event) {
+                event.preventDefault()
                 mouseDown(event.target, that.keyDown);
             });
 
             keyboard_element.addEventListener('touchend', function (event) {
+                event.preventDefault()
                 mouseUp(event.target, that.keyUp);
             });
 
             keyboard_element.addEventListener('touchleave', function (event) {
+                event.preventDefault()
                 mouseOut(event.target, that.keyUp);
             });
 
             keyboard_element.addEventListener('touchcancel', function (event) {
+                event.preventDefault()
                 mouseOut(event.target, that.keyUp);
             });
         }
