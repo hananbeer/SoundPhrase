@@ -6,20 +6,30 @@
         <meta name="description" content="SoundPhrase replaces seedphrases - with music!" />
         <meta name="author" content="high_byte" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link href="http://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet" />
+        <!-- <link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet" /> -->
         <link rel="stylesheet" href="style.css"/>
     </head>
     <body>
         <div class="container">
             <h2>SoundPhrase</h2>
 
-            <input type="button" value="Sign" onclick="onReset()" style="width: 30%; margin-bottom: 10px;" />
+            <div style="margin-bottom: 10px">
+                <input type="button" value="Sign" onclick="onSign()" />
+                <input type="button" value="Download" onclick="onDownload()" />
+                <!-- <input type="button" value="Upload" onclick="onUpload()" id="el_upload" /> -->
+                <input id="el_upload" type="file" accept="application/json" name="files[]" size="30">
+
+                <input type="button" value="Replay" onclick="onReplay()" />
+                <input type="button" value="Clear" onclick="onClear()" />
+                <a id="a_download" style="display: none" download="SoundPhrase.json"></a>
+            </div>
             <div id="keyboard"></div><br />
 
-            <p id="live_input" style="width: 500px; height: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: center">
+            <p id="live_input" style="margin: 0px; width: 500px; height: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: center">
             </p>
 
-            <p id="el_addr" style="width: 500px; text-align: center; word-break: break-all; height: 20px;"></p>
+            <p id="el_priv" class="private" style="writing-mode: vertical-rl; margin: 5px; width: 500px; text-align: center; word-break: break-all; height: 40px;" onclick="el_priv.classList.toggle('private')"></p>
+            <p id="el_addr" style="width: 500px; text-align: center; word-break: break-all; height: 20px; margin: 5px;"></p>
             <textarea id="el_msg" rows="10" cols="80">Message to sign...</textarea>
             <p id="el_signature" style="width: 360px; text-align: center; word-break: break-all; height: 80px;"></p>
 
@@ -32,14 +42,15 @@
             <p style="width: 500px">
                 tip: don't record your SoundPhrase on a hot storage like your SSD drive, disk-on-key or the cloud!
                 <br /><br />
-                use cold storage like vinyl record.
+                use cold storage like a vinyl record.
             </p>
 
-            <p><a href="http://twitter.com/high_byte">twitter.com/@high_byte</a>.</p>
+            <p><a href="http://twitter.com/high_byte">@high_byte</a></p>
         </div>
         <script src="../src/ethers.esm.js" type="module"></script>
         <script src="../src/qwerty-hancock.js"></script>
         <script>
+            let replaying_idx = -1
             let keys_over_time = []
             let wallet = null
             function makeWallet() {
@@ -63,19 +74,87 @@
                 wallet = new _ethers.Wallet(key)
             }
             
-            function onReset(e) {
+            function onSign(e) {
                 makeWallet()
 
                 el_addr.innerText = ''
+                el_priv.innerText = ''
                 el_signature.innerText = ''
 
                 let count = (Math.random() * 5 + 1) || 0;
-                let delay = (Math.random() * 400 + 300) || 0;
+                let delay = (Math.random() * 300 + 300) || 0;
                 for (let i = 0; i < count; i++) {
                     setTimeout(applySignEffects, delay * i)
                 }
 
                 setTimeout(onSignComplete, delay * count + 500)
+            }
+
+            function onDownload() {
+                let json = JSON.stringify(keys_over_time)
+                let blob = new Blob([json], {type: "octet/stream"})
+                let url = window.URL.createObjectURL(blob)
+                a_download.href = url
+                a_download.click()
+                window.URL.revokeObjectURL(url)
+            }
+
+            function onUpload(evt) {
+                let files = evt.target.files; // FileList object
+
+                // use the 1st file from the list
+                let f = files[0];
+                
+                let reader = new FileReader();
+
+                // Closure to capture the file information.
+                reader.onload = (e) => {
+                    keys_over_time = JSON.parse(e.target.result)
+                    live_input.innerText = keys_over_time.map((key) => key.note).join(' ')
+                }
+
+                // Read in the image file as a data URL.
+                reader.readAsText(f);
+            }
+
+            document.getElementById('el_upload').addEventListener('change', onUpload, false);
+
+            function onReplay() {
+                // also shit code
+                if (++replaying_idx >= keys_over_time.length) {
+                    return
+                }
+
+                document.getElementById('keyboard').style['pointer-events'] = 'none'
+
+                // let offset = keys_over_time[0].time
+                let { note, time, endTime } = keys_over_time[replaying_idx]
+                let el_note = document.getElementById(note)
+                triggerMouseEvent(el_note, 'mousedown')
+                setTimeout(() => {
+                    triggerMouseEvent(el_note, 'mouseup')
+
+                    if (replaying_idx + 1 >= keys_over_time.length) {
+                        document.getElementById('keyboard').style['pointer-events'] = ''
+                        replaying_idx = -1
+                    }
+                }, endTime - time)
+                
+                if (replaying_idx + 1 >= keys_over_time.length) {
+                    return
+                }
+
+                let nextTime = keys_over_time[replaying_idx + 1].time
+                setTimeout(() => onReplay(time), nextTime - time)
+            }
+
+            function onClear() {
+                // reset only if starting to play again
+                el_signature.innerText = ''
+                live_input.innerText = ''
+                keys_over_time = []
+                replaying_idx = -1
+                document.getElementById('keyboard').style['pointer-events'] = ''
             }
 
             function onSignComplete() {
@@ -88,6 +167,8 @@
                 // actually sign now
                 wallet.signMessage(el_msg.value).then((sig) => {
                     el_addr.innerText = wallet.address
+                    debugger
+                    el_priv.innerText = wallet.privateKey
                     el_signature.innerText = sig
                 })
             }
@@ -184,15 +265,6 @@
                 if (nodes[note])
                     return
 
-                if (el_signature.innerText.length > 0) {
-                    // reset only if starting to play again
-                    el_signature.innerText = ''
-                    live_input.innerText = ''
-                    keys_over_time = []
-                }
-
-                live_input.innerText += ' ' + note
-
                 let oscillator = context.createOscillator();
                 //oscillator.type = 'sine';
                 oscillator.frequency.value = frequency;
@@ -207,10 +279,27 @@
 
                 nodes[note] = oscillator;
 
-                keys_over_time.push({ note, time: Date.now() })
+                if (!(replaying_idx >= 0)) {
+                    if (el_signature.innerText.length > 0) {
+                        onClear()
+                    }
+
+                    live_input.innerText += ' ' + note
+
+                    keys_over_time.push({ note, time: Date.now() })
+                }
             };
 
             keyboard.keyUp = function (note, frequency) {
+                // shit code but it's last minute hack for replaying stuff :\
+                if (!(replaying_idx >= 0)) {
+                    let i = keys_over_time.length - 1
+                    debugger
+                    while (keys_over_time[i].note != note)
+                        i--
+                    keys_over_time[i].endTime = Date.now()
+                }
+
                 let osc = nodes[note]
                 delete nodes[note]
                 
