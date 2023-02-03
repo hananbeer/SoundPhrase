@@ -28,7 +28,7 @@
             <p id="live_input" style="margin: 0px; width: 500px; height: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: center">
             </p>
 
-            <p id="el_priv" class="private" style="writing-mode: vertical-rl; margin: 5px; width: 500px; text-align: center; word-break: break-all; height: 40px;" onclick="el_priv.classList.toggle('private')"></p>
+            <p id="el_priv" class="private" style="writing-mode: vertical-rl; margin: 5px; width: 460px; text-align: center; word-break: break-all; height: 40px;" onclick="el_priv.classList.toggle('private')"></p>
             <p id="el_addr" style="width: 500px; text-align: center; word-break: break-all; height: 20px; margin: 5px;"></p>
             <textarea id="el_msg" rows="10" cols="80">Message to sign...</textarea>
             <p id="el_signature" style="width: 360px; text-align: center; word-break: break-all; height: 80px;"></p>
@@ -115,7 +115,7 @@
                 // Closure to capture the file information.
                 reader.onload = (e) => {
                     keys_over_time = JSON.parse(e.target.result)
-                    document.location.hash = '#' + btoa(JSON.stringify(keys_over_time))
+                    document.location.hash = '#' + btoa(compressKeys(keys_over_time))
 
                     live_input.innerText = keys_over_time.map((key) => key.note).join(' ')
                 }
@@ -198,12 +198,6 @@
                 //el_msg.style['filter'] = `contrast(${sat + 1})`
             }
 
-            function onInterval(e) {
-                let keys_down = Object.keys(nodes)
-                if (keys_down.length > 0)
-                    console.log(keys_down.join(','))
-            }
-
             window.AudioContext = window.AudioContext || window.webkitAudioContext;
 
             var context = new AudioContext(),
@@ -276,7 +270,6 @@
                 let data = []
                 for (let key of keys) {
                     data.push(`${key.note}:${key.time-offset}:${key.endTime-offset}`)
-                    console.log(key.note)
                 }
 
                 return data.join(',')
@@ -285,7 +278,6 @@
             function uncompressKeys(data) {
                 let keys = []
 
-                debugger
                 for (let key of data.split(',')) {
                     let [note, time, endTime] = key.split(':')
                     time = parseInt(time)
@@ -345,7 +337,6 @@
                 let b64 = document.location.hash.substr(1)
                 if (b64) {
                     keys_over_time = uncompressKeys(atob(b64))
-                    debugger
                     live_input.innerText = keys_over_time.map((key) => key.note).join(' ')
                 }
             }
