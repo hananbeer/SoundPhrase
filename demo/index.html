@@ -19,7 +19,7 @@
                 <!-- <input type="button" value="Upload" onclick="onUpload()" id="el_upload" /> -->
                 <input id="el_upload" type="file" accept="application/json" name="files[]" size="30">
 
-                <input type="button" value="Replay" onclick="onReplay()" />
+                <input id="el_play" type="button" value="Play" onclick="el_play.classList.toggle('play_notification', false); onPlay()" style="transition: 1s ease" />
                 <input type="button" value="Clear" onclick="onClear()" />
                 <a id="a_download" style="display: none" download="SoundPhrase.json"></a>
             </div>
@@ -126,7 +126,7 @@
 
             document.getElementById('el_upload').addEventListener('change', onUpload, false);
 
-            function onReplay() {
+            function onPlay() {
                 // also shit code
                 if (++replaying_idx >= keys_over_time.length) {
                     return
@@ -152,7 +152,7 @@
                 }
 
                 let nextTime = keys_over_time[replaying_idx + 1].time
-                setTimeout(() => onReplay(time), nextTime - time)
+                setTimeout(() => onPlay(time), nextTime - time)
             }
 
             function onClear() {
@@ -338,6 +338,7 @@
                 if (b64) {
                     keys_over_time = uncompressKeys(atob(b64))
                     live_input.innerText = keys_over_time.map((key) => key.note).join(' ')
+                    el_play.classList.toggle('play_notification', true)
                 }
             }
 
